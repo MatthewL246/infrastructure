@@ -9,8 +9,14 @@ variable "hetzner_ssh_keys" {
   type        = map(string)
 }
 
+variable "hetz_de_first_time_setup_completed" {
+  description = "Has first-time setup been completed for the hetz-de server? If this is false, SSH connections must use the root user."
+  type        = bool
+  default     = false
+}
+
 variable "hetz_de_ssh_port" {
-  description = "SSH port used by hetz-de."
+  description = "SSH port used by the hetz-de server."
   type        = number
   default     = 22
 }

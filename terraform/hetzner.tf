@@ -115,3 +115,11 @@ resource "hcloud_server" "hetz_de" {
     ignore_changes = [ssh_keys]
   }
 }
+
+resource "terraform_data" "hetz_de_first_time_setup_completed" {
+  input = var.hetz_de_first_time_setup_completed
+}
+
+resource "terraform_data" "hetz_de_ssh_port" {
+  input = var.hetz_de_ssh_port
+}
