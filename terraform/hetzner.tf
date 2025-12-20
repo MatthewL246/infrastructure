@@ -44,21 +44,6 @@ resource "hcloud_firewall" "hetz_de" {
     ]
   }
 
-  dynamic "rule" {
-    for_each = var.hetz_de_ssh_port_changed ? [] : [1]
-
-    content {
-      description = "Allow SSH (default port for first-time setup)"
-      direction   = "in"
-      protocol    = "tcp"
-      source_ips = [
-        "0.0.0.0/0",
-        "::/0"
-      ]
-      port = "22"
-    }
-  }
-
   rule {
     description = "Allow SSH"
     direction   = "in"
@@ -67,7 +52,7 @@ resource "hcloud_firewall" "hetz_de" {
       "0.0.0.0/0",
       "::/0",
     ]
-    port = "20022"
+    port = var.hetz_de_ssh_port
   }
 
   rule {

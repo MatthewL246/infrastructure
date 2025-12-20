@@ -9,10 +9,10 @@ variable "hetzner_ssh_keys" {
   type        = map(string)
 }
 
-variable "hetz_de_ssh_port_changed" {
-  description = "Has the SSH port of the hetz-de server been changed from the default? Used to configure the firewall."
-  type        = bool
-  default     = false
+variable "hetz_de_ssh_port" {
+  description = "SSH port used by hetz-de."
+  type        = number
+  default     = 22
 }
 
 variable "cloudflare_api_token" {
