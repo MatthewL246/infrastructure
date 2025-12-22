@@ -18,16 +18,6 @@ if [[ "$r" == 1 ]]; then
     ssh-add
 fi
 
-cd "$base_dir/terraform"
-
-json_data="$(tofu show -json)"
-hetz_de_ip="$(echo "$json_data" | jq --raw-output ".values.outputs.hetz_de_ipv4.value")"
-hetz_de_ssh_port="$(echo "$json_data" | jq --raw-output ".values.outputs.hetz_de_ssh_port.value")"
-
 cd "$base_dir/ansible"
 
-generated_inventory="$(mktemp)"
-trap 'rm -f "$generated_inventory"' EXIT
-echo "hetz-de ansible_host=$hetz_de_ip ansible_port=$hetz_de_ssh_port ansible_user=matthew" >>"$generated_inventory"
-
-ansible-playbook --inventory "$generated_inventory" --diff --verbose -v ./hetz-de.yml --check
+ansible-playbook --inventory ./inventory.sh --diff --verbose ./hetz-de.yml
