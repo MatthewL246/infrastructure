@@ -8,11 +8,15 @@ locals {
   hetz_de_datacenter = "nbg1-dc3"
 }
 
-resource "hcloud_ssh_key" "keys" {
-  for_each = var.hetzner_ssh_keys
+resource "random_integer" "hetz_de_ssh_port" {
+  min = 1025
+  max = 65535
+}
 
-  name       = each.key
-  public_key = each.value
+# Exists to prevent Hetzner from automatically generating a root password for the server, so it keeps the root account locked. Just uses a throwaway key I generated and then deleted. Setting allow_public_ssh_keys to false in the cloud-init user data prevents this key from actually being authorized.
+resource "hcloud_ssh_key" "dummy" {
+  name       = "dummy"
+  public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPTgbKioreT00Lh7VQpNNeqxNVfe3Pr5qm1Y6onUl5OL"
 }
 
 resource "hcloud_primary_ip" "hetz_de_ipv4" {
@@ -21,6 +25,7 @@ resource "hcloud_primary_ip" "hetz_de_ipv4" {
   type          = "ipv4"
   auto_delete   = false
   assignee_type = "server"
+  # TODO: once this is in prod, enable delete_protection and lifecycle.prevent_destroy
 }
 
 resource "hcloud_primary_ip" "hetz_de_ipv6" {
@@ -52,7 +57,7 @@ resource "hcloud_firewall" "hetz_de" {
       "0.0.0.0/0",
       "::/0",
     ]
-    port = var.hetz_de_ssh_port
+    port = random_integer.hetz_de_ssh_port.result
   }
 
   rule {
@@ -95,31 +100,50 @@ resource "hcloud_server" "hetz_de" {
   server_type = "cax11"
 
   image    = "ubuntu-24.04"
-  ssh_keys = [for key in values(hcloud_ssh_key.keys) : key.id]
+  ssh_keys = [hcloud_ssh_key.dummy.id]
   # For potential future upgrades and downgrades
   keep_disk = true
   # Prefer manual snapshots for cost reasons
   backups = false
 
+  # Minimal cloud-init user data is needed to configure users and SSH so that Ansible can connect for the first time
+  user_data = "#cloud-config\n${yamlencode({
+    users = [{
+      name   = "matthew"
+      groups = ["sudo"]
+      # TODO: don't rely on GitHub to store SSH keys
+      ssh_import_id = ["gh:MatthewL246"]
+      # Keep the account unlocked so SSH access is allowed and sudo works
+      lock_passwd = false
+      passwd      = var.hetz_de_password_hash
+    }]
+    # Don't actually authorize the dummy SSH key
+    allow_public_ssh_keys = false
+    write_files = [{
+      # Minimal secure SSH daemon configuration, will be replaced with an Ansible-managed one
+      path    = "/etc/ssh/sshd_config"
+      content = <<-EOT
+        Port ${random_integer.hetz_de_ssh_port.result}
+        PermitRootLogin no
+        PasswordAuthentication no
+        KbdInteractiveAuthentication no
+      EOT
+    }]
+    runcmd = [
+      "systemctl daemon-reload",
+      "systemctl restart ssh.service ssh.socket"
+    ]
+  })}"
+
   public_net {
-    ipv4_enabled = true
-    ipv4         = hcloud_primary_ip.hetz_de_ipv4.id
-    ipv6_enabled = true
-    ipv6         = hcloud_primary_ip.hetz_de_ipv6.id
+    ipv4 = hcloud_primary_ip.hetz_de_ipv4.id
+    ipv6 = hcloud_primary_ip.hetz_de_ipv6.id
   }
 
   firewall_ids = [hcloud_firewall.hetz_de.id]
 
   lifecycle {
-    # Recommended by the hcloud provider docs because a server's SSH keys cannot be updated in-place
-    ignore_changes = [ssh_keys]
+    # Recommended by the hcloud provider docs because these cannot be updated in-place but only matter for initial server creation
+    ignore_changes = [ssh_keys, user_data]
   }
-}
-
-resource "terraform_data" "hetz_de_first_time_setup_completed" {
-  input = var.hetz_de_first_time_setup_completed
-}
-
-resource "terraform_data" "hetz_de_ssh_port" {
-  input = var.hetz_de_ssh_port
 }
