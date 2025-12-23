@@ -64,12 +64,6 @@
         default: deny
         state: enabled
 
-    - name: Update apt packages
-      become: true
-      ansible.builtin.apt:
-        update_cache: true
-        upgrade: full
-
     - name: Install fail2ban
       become: true
       ansible.builtin.apt:
@@ -89,6 +83,12 @@
         - jail.local
       notify:
         - Reload fail2ban
+
+    - name: Update apt packages
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: full
 
     - name: Install unattended-upgrades
       become: true
