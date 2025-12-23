@@ -15,6 +15,7 @@ terraform_state="$(tofu show -json)"
 hetz_de_ip="$(echo "$terraform_state" | jq --raw-output ".values.outputs.hetz_de_ipv4.value")"
 hetz_de_ssh_port="$(echo "$terraform_state" | jq --raw-output ".values.outputs.hetz_de_ssh_port.value")"
 hetz_de_password="$(pass show hetz_de_password)"
+hetz_de_password_hash="$(pass show hetz_de_password_hash)"
 
 inventory_template='
 {
@@ -35,7 +36,8 @@ inventory_template='
                 "ansible_port": $hetz_de_ssh_port,
                 "ansible_user": "matthew",
                 "ansible_become_password": $hetz_de_password,
-                "ansible_pipelining": true
+                "ansible_pipelining": true,
+                "password_hash": $hetz_de_password_hash
             }
         }
     }
@@ -45,4 +47,5 @@ jq --null-input \
     --arg hetz_de_ip "$hetz_de_ip" \
     --arg hetz_de_ssh_port "$hetz_de_ssh_port" \
     --arg hetz_de_password "$hetz_de_password" \
+    --arg hetz_de_password_hash "$hetz_de_password_hash" \
     "$inventory_template"

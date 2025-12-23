@@ -1,18 +1,61 @@
-- name: First-boot users and SSH server setup
-  hosts: hetz-de
-
-  tasks:
-   - name: Create matthew user
-     ansible.builtin.user:
-      name: matthew
-      append: true
-      groups: sudo
-
 - name: Server setup
   hosts: hetz-de
 
   tasks:
-   - name: Update apt packages
-     ansible.builtin.apt:
-      update_cache: true
-      upgrade: full
+    - name: Configure matthew user
+      become: true
+      ansible.builtin.user:
+        name: matthew
+        comment: Matthew
+        group: matthew
+        groups:
+          - matthew
+          - sudo
+        home: /home/matthew
+        password: "{{ password_hash }}"
+        password_lock: false
+        shell: /bin/bash
+
+    - name: Clean up root's SSH configuration
+      become: true
+      ansible.builtin.file:
+        path: /root/.ssh
+        state: absent
+
+    - name: Configure SSH
+      become: true
+      ansible.builtin.template:
+        src: ./templates/sshd_config.j2
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+      notify:
+        - Reload systemd
+        - Reload SSH daemon
+        - Restart SSH socket
+
+    - name: Update apt packages
+      become: true
+      ansible.builtin.apt:
+        update_cache: true
+        upgrade: full
+
+  handlers:
+    # Needed for ssh.socket to automatically pick up changes to the port
+    - name: Reload systemd
+      become: true
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
+    - name: Reload SSH daemon
+      become: true
+      ansible.builtin.service:
+        name: ssh
+        state: reloaded
+
+    - name: Restart SSH socket
+      become: true
+      ansible.builtin.service:
+        name: ssh.socket
+        state: restarted

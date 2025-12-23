@@ -1,0 +1,29 @@
+# Network
+
+Port {{ ansible_port }}
+AddressFamily any
+ListenAddress 0.0.0.0
+ListenAddress ::
+
+
+# Authentication
+
+AllowUsers matthew
+PermitRootLogin no
+
+PubkeyAuthentication yes
+PasswordAuthentication no
+PermitEmptyPasswords no
+KbdInteractiveAuthentication no
+
+LoginGraceTime 30
+MaxAuthTries 2
+UsePAM yes
+
+
+# Other settings
+
+X11Forwarding yes
+PrintMotd yes
+PrintLastLog yes
+Subsystem sftp /usr/lib/openssh/sftp-server
