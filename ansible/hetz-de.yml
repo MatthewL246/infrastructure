@@ -53,12 +53,26 @@
             - {name: SSH, proto: tcp, port: "{{ ansible_port }}"}
             - {name: HTTP, proto: tcp, port: 80}
             - {name: HTTPS, proto: tcp, port: 443}
-            - {name: WireGuard, proto: udp, port: 51820,}
+            - {name: WireGuard, proto: udp, port: 51820}
+          register: ufw_create
 
         - name: Enable UFW with default-deny policy
           community.general.ufw:
             default: deny
             state: enabled
+          register: ufw_status
+
+          # Important because removing a rule from the list of allow rules does not ensure that it is deleted
+        - name: Fail if there are an unexpected number of UFW rules
+          vars:
+            rule_count: "{{ ufw_status.msg | split('\n') | select('search', ' (ALLOW|DENY|REJECT|LIMIT) ') | length }}"
+            expected_rule_count: "{{ (ufw_create.results | length) * 2 }}"
+          when: rule_count != expected_rule_count
+          ansible.builtin.fail:
+            msg: |
+              Unexpected number of UFW rules: expected {{ expected_rule_count }}, got {{ rule_count }}
+
+              {{ ufw_status.msg }}
 
         - name: Configure fail2ban
           ansible.builtin.copy:
