@@ -35,6 +35,9 @@
         - Reload SSH daemon
         - Restart SSH socket
 
+    - name: Apply SSH configuration changes immediately
+      ansible.builtin.meta: flush_handlers
+
     - name: Update apt packages
       become: true
       ansible.builtin.apt:
