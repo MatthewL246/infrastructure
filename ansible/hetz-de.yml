@@ -64,6 +64,30 @@
       notify:
         - Reload fail2ban
 
+    - name: Install unattended-upgrades
+      become: true
+      ansible.builtin.apt:
+        name: unattended-upgrades
+        state: present
+
+    - name: Configure unattended-upgrades
+      become: true
+      ansible.builtin.copy:
+        src: ./config-files/50unattended-upgrades
+        dest: /etc/apt/apt.conf.d/50unattended-upgrades
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+
+    - name: Enable unattended upgrades
+      become: true
+      ansible.builtin.service:
+        name: "{{ item }}"
+        enabled: true
+      loop:
+        - apt-daily.timer
+        - apt-daily-upgrade.timer
+
   handlers:
     # Needed for ssh.socket to automatically pick up changes to the port
     - name: Reload systemd
