@@ -38,6 +38,32 @@
     - name: Apply SSH configuration changes immediately
       ansible.builtin.meta: flush_handlers
 
+    - name: Install UFW
+      become: true
+      ansible.builtin.apt:
+        name: ufw
+        state: present
+
+    - name: Create UFW allow rules
+      become: true
+      community.general.ufw:
+        rule: allow
+        direction: in
+        proto: "{{ item.proto }}"
+        to_port: "{{ item.port }}"
+        comment: Allow {{ item.name }}
+      loop:
+        - {name: SSH, proto: tcp, port: "{{ ansible_port }}"}
+        - {name: HTTP, proto: tcp, port: 80}
+        - {name: HTTPS, proto: tcp, port: 443}
+        - {name: WireGuard, proto: udp, port: 51820,}
+
+    - name: Enable UFW with default-deny policy
+      become: true
+      community.general.ufw:
+        default: deny
+        state: enabled
+
     - name: Update apt packages
       become: true
       ansible.builtin.apt:
