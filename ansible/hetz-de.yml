@@ -25,7 +25,7 @@
     - name: Configure SSH
       become: true
       ansible.builtin.template:
-        src: ./templates/sshd_config.j2
+        src: ./config-files/sshd_config.j2
         dest: /etc/ssh/sshd_config
         owner: root
         group: root
@@ -43,6 +43,26 @@
       ansible.builtin.apt:
         update_cache: true
         upgrade: full
+
+    - name: Install fail2ban
+      become: true
+      ansible.builtin.apt:
+        name: fail2ban
+        state: present
+
+    - name: Configure fail2ban
+      become: true
+      ansible.builtin.copy:
+        src: ./config-files/{{ item }}
+        dest: /etc/fail2ban/{{ item }}
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+      loop:
+        - fail2ban.local
+        - jail.local
+      notify:
+        - Reload fail2ban
 
   handlers:
     # Needed for ssh.socket to automatically pick up changes to the port
@@ -62,3 +82,9 @@
       ansible.builtin.service:
         name: ssh.socket
         state: restarted
+
+    - name: Reload fail2ban
+      become: true
+      ansible.builtin.service:
+        name: fail2ban
+        state: reloaded
