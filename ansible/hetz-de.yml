@@ -1,140 +1,116 @@
 - name: Server setup
   hosts: hetz-de
+  become: true
 
   tasks:
-    - name: Configure matthew user
-      become: true
-      ansible.builtin.user:
-        name: matthew
-        comment: Matthew
-        group: matthew
-        groups:
-          - matthew
-          - sudo
-        home: /home/matthew
-        password: "{{ password_hash }}"
-        password_lock: false
-        shell: /bin/bash
+    # For important (i.e. security-related) tasks that should be done early
+    - name: Early server setup
+      block:
+        - name: Configure matthew user
+          ansible.builtin.user:
+            name: matthew
+            comment: Matthew
+            group: matthew
+            groups:
+              - matthew
+              - sudo
+            home: /home/matthew
+            password: "{{ password_hash }}"
+            password_lock: false
+            shell: /bin/bash
 
-    - name: Clean up root's SSH configuration
-      become: true
-      ansible.builtin.file:
-        path: /root/.ssh
-        state: absent
+        - name: Configure SSH
+          ansible.builtin.template:
+            src: ./config-files/sshd_config.j2
+            dest: /etc/ssh/sshd_config
+            owner: root
+            group: root
+            mode: u=rw,g=r,o=r
+          notify:
+            - Reload systemd
+            - Reload SSH daemon
+            - Restart SSH socket
 
-    - name: Configure SSH
-      become: true
-      ansible.builtin.template:
-        src: ./config-files/sshd_config.j2
-        dest: /etc/ssh/sshd_config
-        owner: root
-        group: root
-        mode: u=rw,g=r,o=r
-      notify:
-        - Reload systemd
-        - Reload SSH daemon
-        - Restart SSH socket
+        - name: Apply SSH configuration changes immediately
+          ansible.builtin.meta: flush_handlers
 
-    - name: Apply SSH configuration changes immediately
-      ansible.builtin.meta: flush_handlers
+        - name: Install required packages
+          ansible.builtin.apt:
+            name:
+              - ufw
+              - fail2ban
+              - unattended-upgrades
+            state: present
 
-    - name: Install UFW
-      become: true
-      ansible.builtin.apt:
-        name: ufw
-        state: present
+        - name: Create UFW allow rules
+          community.general.ufw:
+            rule: allow
+            direction: in
+            proto: "{{ item.proto }}"
+            to_port: "{{ item.port }}"
+            comment: Allow {{ item.name }}
+          loop:
+            - {name: SSH, proto: tcp, port: "{{ ansible_port }}"}
+            - {name: HTTP, proto: tcp, port: 80}
+            - {name: HTTPS, proto: tcp, port: 443}
+            - {name: WireGuard, proto: udp, port: 51820,}
 
-    - name: Create UFW allow rules
-      become: true
-      community.general.ufw:
-        rule: allow
-        direction: in
-        proto: "{{ item.proto }}"
-        to_port: "{{ item.port }}"
-        comment: Allow {{ item.name }}
-      loop:
-        - {name: SSH, proto: tcp, port: "{{ ansible_port }}"}
-        - {name: HTTP, proto: tcp, port: 80}
-        - {name: HTTPS, proto: tcp, port: 443}
-        - {name: WireGuard, proto: udp, port: 51820,}
+        - name: Enable UFW with default-deny policy
+          community.general.ufw:
+            default: deny
+            state: enabled
 
-    - name: Enable UFW with default-deny policy
-      become: true
-      community.general.ufw:
-        default: deny
-        state: enabled
+        - name: Configure fail2ban
+          ansible.builtin.copy:
+            src: ./config-files/{{ item }}
+            dest: /etc/fail2ban/{{ item }}
+            owner: root
+            group: root
+            mode: u=rw,g=r,o=r
+          loop:
+            - fail2ban.local
+            - jail.local
+          notify:
+            - Reload fail2ban
 
-    - name: Install fail2ban
-      become: true
-      ansible.builtin.apt:
-        name: fail2ban
-        state: present
+        - name: Configure unattended-upgrades
+          ansible.builtin.copy:
+            src: ./config-files/50unattended-upgrades
+            dest: /etc/apt/apt.conf.d/50unattended-upgrades
+            owner: root
+            group: root
+            mode: u=rw,g=r,o=r
 
-    - name: Configure fail2ban
-      become: true
-      ansible.builtin.copy:
-        src: ./config-files/{{ item }}
-        dest: /etc/fail2ban/{{ item }}
-        owner: root
-        group: root
-        mode: u=rw,g=r,o=r
-      loop:
-        - fail2ban.local
-        - jail.local
-      notify:
-        - Reload fail2ban
+        - name: Enable unattended upgrades
+          ansible.builtin.service:
+            name: "{{ item }}"
+            enabled: true
+          loop:
+            - apt-daily.timer
+            - apt-daily-upgrade.timer
 
-    - name: Update apt packages
-      become: true
+    - name: Upgrade apt packages
       ansible.builtin.apt:
         update_cache: true
         upgrade: full
 
-    - name: Install unattended-upgrades
-      become: true
-      ansible.builtin.apt:
-        name: unattended-upgrades
-        state: present
-
-    - name: Configure unattended-upgrades
-      become: true
-      ansible.builtin.copy:
-        src: ./config-files/50unattended-upgrades
-        dest: /etc/apt/apt.conf.d/50unattended-upgrades
-        owner: root
-        group: root
-        mode: u=rw,g=r,o=r
-
-    - name: Enable unattended upgrades
-      become: true
-      ansible.builtin.service:
-        name: "{{ item }}"
-        enabled: true
-      loop:
-        - apt-daily.timer
-        - apt-daily-upgrade.timer
-
   handlers:
     # Needed for ssh.socket to automatically pick up changes to the port
     - name: Reload systemd
-      become: true
       ansible.builtin.systemd_service:
         daemon_reload: true
 
     - name: Reload SSH daemon
-      become: true
       ansible.builtin.service:
         name: ssh
         state: reloaded
 
     - name: Restart SSH socket
-      become: true
       ansible.builtin.service:
         name: ssh.socket
         state: restarted
 
     - name: Reload fail2ban
-      become: true
       ansible.builtin.service:
         name: fail2ban
         state: reloaded
