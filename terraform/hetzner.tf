@@ -61,17 +61,6 @@ resource "hcloud_firewall" "hetz_de" {
   }
 
   rule {
-    description = "Allow WireGuard"
-    direction   = "in"
-    protocol    = "udp"
-    source_ips = [
-      "0.0.0.0/0",
-      "::/0",
-    ]
-    port = "51820"
-  }
-
-  rule {
     description = "Allow HTTP"
     direction   = "in"
     protocol    = "tcp"

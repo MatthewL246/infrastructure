@@ -53,8 +53,18 @@
             - {name: SSH, proto: tcp, port: "{{ ansible_port }}"}
             - {name: HTTP, proto: tcp, port: 80}
             - {name: HTTPS, proto: tcp, port: 443}
-            - {name: WireGuard, proto: udp, port: 51820}
           register: ufw_create
+
+        - name: Delete old UFW rules
+          community.general.ufw:
+            delete: true
+            rule: allow
+            direction: in
+            proto: "{{ item.proto }}"
+            to_port: "{{ item.port }}"
+          loop:
+            - {name: WireGuard, proto: udp, port: 51820}
+          vars: {} # Deliberately empty block due to formatter bug: https://github.com/google/yamlfmt/issues/110
 
         - name: Enable UFW with default-deny policy
           community.general.ufw:
