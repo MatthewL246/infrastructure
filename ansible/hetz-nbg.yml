@@ -1,5 +1,5 @@
 - name: Server setup
-  hosts: hetz-de
+  hosts: hetz-nbg
   become: true
 
   tasks:
@@ -36,6 +36,7 @@
 
         - name: Install required packages
           ansible.builtin.apt:
+            update_cache: true
             name:
               - ufw
               - fail2ban

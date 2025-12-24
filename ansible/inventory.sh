@@ -12,16 +12,16 @@ base_dir="$(dirname "$(realpath "$0")")/.."
 cd "$base_dir/terraform"
 
 terraform_state="$(tofu show -json)"
-hetz_de_ip="$(echo "$terraform_state" | jq --raw-output ".values.outputs.hetz_de_ipv4.value")"
-hetz_de_ssh_port="$(echo "$terraform_state" | jq --raw-output ".values.outputs.hetz_de_ssh_port.value")"
-hetz_de_password="$(pass show hetz_de_password)"
-hetz_de_password_hash="$(pass show hetz_de_password_hash)"
+hetz_nbg_ip="$(echo "$terraform_state" | jq --raw-output ".values.outputs.hetz_nbg_ipv4.value")"
+hetz_nbg_ssh_port="$(echo "$terraform_state" | jq --raw-output ".values.outputs.hetz_nbg_ssh_port.value")"
+hetz_nbg_password="$(pass show hetz_nbg_password)"
+hetz_nbg_password_hash="$(pass show hetz_nbg_password_hash)"
 
 inventory_template='
 {
     "ungrouped": {
         "hosts": [
-            "hetz-de"
+            "hetz-nbg"
         ]
     },
     "all": {
@@ -31,21 +31,21 @@ inventory_template='
     },
     "_meta": {
         "hostvars": {
-            "hetz-de": {
-                "ansible_host": $hetz_de_ip,
-                "ansible_port": $hetz_de_ssh_port,
+            "hetz-nbg": {
+                "ansible_host": $hetz_nbg_ip,
+                "ansible_port": $hetz_nbg_ssh_port,
                 "ansible_user": "matthew",
-                "ansible_become_password": $hetz_de_password,
+                "ansible_become_password": $hetz_nbg_password,
                 "ansible_pipelining": true,
-                "password_hash": $hetz_de_password_hash
+                "password_hash": $hetz_nbg_password_hash
             }
         }
     }
 }'
 
 jq --null-input \
-    --arg hetz_de_ip "$hetz_de_ip" \
-    --arg hetz_de_ssh_port "$hetz_de_ssh_port" \
-    --arg hetz_de_password "$hetz_de_password" \
-    --arg hetz_de_password_hash "$hetz_de_password_hash" \
+    --arg hetz_nbg_ip "$hetz_nbg_ip" \
+    --arg hetz_nbg_ssh_port "$hetz_nbg_ssh_port" \
+    --arg hetz_nbg_password "$hetz_nbg_password" \
+    --arg hetz_nbg_password_hash "$hetz_nbg_password_hash" \
     "$inventory_template"

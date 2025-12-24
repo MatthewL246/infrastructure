@@ -5,10 +5,10 @@ provider "hcloud" {
 locals {
   # I chose Nuremberg because it supports cost-optimized servers and is physically slightly closer to the US
   # https://docs.hetzner.com/cloud/general/locations/#what-datacenters-are-there
-  hetz_de_datacenter = "nbg1-dc3"
+  hetz_nbg_datacenter = "nbg1-dc3"
 }
 
-resource "random_integer" "hetz_de_ssh_port" {
+resource "random_integer" "hetz_nbg_ssh_port" {
   min = 1025
   max = 65535
 }
@@ -19,25 +19,25 @@ resource "hcloud_ssh_key" "dummy" {
   public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPTgbKioreT00Lh7VQpNNeqxNVfe3Pr5qm1Y6onUl5OL"
 }
 
-resource "hcloud_primary_ip" "hetz_de_ipv4" {
-  name          = "hetz_de_ipv4"
-  datacenter    = local.hetz_de_datacenter
+resource "hcloud_primary_ip" "hetz_nbg_ipv4" {
+  name          = "hetz_nbg_ipv4"
+  datacenter    = local.hetz_nbg_datacenter
   type          = "ipv4"
   auto_delete   = false
   assignee_type = "server"
   # TODO: once this is in prod, enable delete_protection and lifecycle.prevent_destroy
 }
 
-resource "hcloud_primary_ip" "hetz_de_ipv6" {
-  name          = "hetz_de_ipv6"
-  datacenter    = local.hetz_de_datacenter
+resource "hcloud_primary_ip" "hetz_nbg_ipv6" {
+  name          = "hetz_nbg_ipv6"
+  datacenter    = local.hetz_nbg_datacenter
   type          = "ipv6"
   auto_delete   = false
   assignee_type = "server"
 }
 
-resource "hcloud_firewall" "hetz_de" {
-  name = "hetz_de_firewall"
+resource "hcloud_firewall" "hetz_nbg" {
+  name = "hetz_nbg_firewall"
 
   rule {
     description = "Allow all ICMP"
@@ -57,7 +57,7 @@ resource "hcloud_firewall" "hetz_de" {
       "0.0.0.0/0",
       "::/0",
     ]
-    port = random_integer.hetz_de_ssh_port.result
+    port = random_integer.hetz_nbg_ssh_port.result
   }
 
   rule {
@@ -83,9 +83,9 @@ resource "hcloud_firewall" "hetz_de" {
   }
 }
 
-resource "hcloud_server" "hetz_de" {
-  name        = "hetz-de"
-  datacenter  = local.hetz_de_datacenter
+resource "hcloud_server" "hetz_nbg" {
+  name        = "hetz-nbg"
+  datacenter  = local.hetz_nbg_datacenter
   server_type = "cax11"
 
   image    = "ubuntu-24.04"
@@ -104,7 +104,7 @@ resource "hcloud_server" "hetz_de" {
       ssh_import_id = ["gh:MatthewL246"]
       # Keep the account unlocked so SSH access is allowed and sudo works
       lock_passwd = false
-      passwd      = var.hetz_de_password_hash
+      passwd      = var.hetz_nbg_password_hash
     }]
     # Don't actually authorize the dummy SSH key
     allow_public_ssh_keys = false
@@ -112,7 +112,7 @@ resource "hcloud_server" "hetz_de" {
       # Minimal secure SSH daemon configuration, will be replaced with an Ansible-managed one
       path    = "/etc/ssh/sshd_config"
       content = <<-EOT
-        Port ${random_integer.hetz_de_ssh_port.result}
+        Port ${random_integer.hetz_nbg_ssh_port.result}
         PermitRootLogin no
         PasswordAuthentication no
         KbdInteractiveAuthentication no
@@ -125,11 +125,11 @@ resource "hcloud_server" "hetz_de" {
   })}"
 
   public_net {
-    ipv4 = hcloud_primary_ip.hetz_de_ipv4.id
-    ipv6 = hcloud_primary_ip.hetz_de_ipv6.id
+    ipv4 = hcloud_primary_ip.hetz_nbg_ipv4.id
+    ipv6 = hcloud_primary_ip.hetz_nbg_ipv6.id
   }
 
-  firewall_ids = [hcloud_firewall.hetz_de.id]
+  firewall_ids = [hcloud_firewall.hetz_nbg.id]
 
   lifecycle {
     # Recommended by the hcloud provider docs because these cannot be updated in-place but only matter for initial server creation

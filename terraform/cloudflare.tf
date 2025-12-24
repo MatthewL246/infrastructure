@@ -2,22 +2,20 @@ provider "cloudflare" {
   api_token = var.cloudflare_api_token
 }
 
-resource "cloudflare_dns_record" "terraform_test_ipv4" {
+resource "cloudflare_dns_record" "hetz_nbg_ipv4" {
   zone_id = var.cloudflare_zone_id
-  name    = "terraform_test"
+  name    = "hetz-nbg"
   type    = "A"
-  content = hcloud_server.hetz_de.ipv4_address
+  content = hcloud_server.hetz_nbg.ipv4_address
   ttl     = 1
   proxied = false
-  comment = "Terraform test record (IPv4)"
 }
 
-resource "cloudflare_dns_record" "terraform_test_ipv6" {
+resource "cloudflare_dns_record" "hetz_nbg_ipv6" {
   zone_id = var.cloudflare_zone_id
-  name    = "terraform_test"
+  name    = "hetz-nbg"
   type    = "AAAA"
-  content = hcloud_server.hetz_de.ipv6_address
+  content = hcloud_server.hetz_nbg.ipv6_address
   ttl     = 1
   proxied = false
-  comment = "Terraform test record (IPv6)"
 }
