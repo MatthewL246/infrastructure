@@ -109,6 +109,7 @@
         - name: Enable unattended upgrades
           ansible.builtin.service:
             name: "{{ item }}"
+            state: started
             enabled: true
           loop:
             - apt-daily.timer
