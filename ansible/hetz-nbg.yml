@@ -78,9 +78,9 @@
           vars:
             rule_count: "{{ ufw_status.msg | split('\n') | select('search', ' (ALLOW|DENY|REJECT|LIMIT) ') | length }}"
             expected_rule_count: "{{ (ufw_create.results | length) * 2 }}"
-          when: rule_count != expected_rule_count
-          ansible.builtin.fail:
-            msg: |
+          ansible.builtin.assert:
+            that: rule_count == expected_rule_count
+            fail_msg: |
               Unexpected number of UFW rules: expected {{ expected_rule_count }}, got {{ rule_count }}
 
               {{ ufw_status.msg }}
