@@ -23,7 +23,7 @@ variable "cloudflare_zone_id" {
 #
 # - Data sources like "local_command" and "external" can't read ephemeral variables because they need to store their full commands in the state (which would include the plaintext password).
 # - A "local-exec" provisioner could access the ephemeral variable, but there is no way to use its output (without something messy like writing it to a file and then reading that file later).
-# - Setting a temporary password and using a "remote-exec" provisioner to SSH in and change it would be an option but is also quite messy. Terraform should't be making SSH connections.
+# - Setting a temporary password and using a "remote-exec" provisioner to SSH in and change it would be an option but is also quite messy. Terraform shouldn't be making SSH connections.
 #
 # In the end, storing a password hash in the same place as password isn't terrible, I just need to be careful to change the hash when I change the password.
 #
