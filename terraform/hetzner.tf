@@ -5,7 +5,7 @@ provider "hcloud" {
 locals {
   # I chose Nuremberg because it supports cost-optimized servers and is physically slightly closer to the US
   # https://docs.hetzner.com/cloud/general/locations/#what-datacenters-are-there
-  hetz_nbg_datacenter = "nbg1-dc3"
+  hetz_nbg_location = "nbg1"
 }
 
 resource "random_integer" "hetz_nbg_ssh_port" {
@@ -20,20 +20,18 @@ resource "hcloud_ssh_key" "dummy" {
 }
 
 resource "hcloud_primary_ip" "hetz_nbg_ipv4" {
-  name          = "hetz_nbg_ipv4"
-  datacenter    = local.hetz_nbg_datacenter
-  type          = "ipv4"
-  auto_delete   = false
-  assignee_type = "server"
+  name        = "hetz_nbg_ipv4"
+  location    = local.hetz_nbg_location
+  type        = "ipv4"
+  auto_delete = false
   # TODO: once this is in prod, enable delete_protection and lifecycle.prevent_destroy
 }
 
 resource "hcloud_primary_ip" "hetz_nbg_ipv6" {
-  name          = "hetz_nbg_ipv6"
-  datacenter    = local.hetz_nbg_datacenter
-  type          = "ipv6"
-  auto_delete   = false
-  assignee_type = "server"
+  name        = "hetz_nbg_ipv6"
+  location    = local.hetz_nbg_location
+  type        = "ipv6"
+  auto_delete = false
 }
 
 resource "hcloud_firewall" "hetz_nbg" {
@@ -85,7 +83,7 @@ resource "hcloud_firewall" "hetz_nbg" {
 
 resource "hcloud_server" "hetz_nbg" {
   name        = "hetz-nbg"
-  datacenter  = local.hetz_nbg_datacenter
+  location    = local.hetz_nbg_location
   server_type = "cax11"
 
   image    = "ubuntu-24.04"
