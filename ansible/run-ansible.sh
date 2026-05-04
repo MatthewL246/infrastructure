@@ -8,13 +8,15 @@ base_dir="$(dirname "$(realpath "$0")")/.."
 r=0
 ssh-add -l >/dev/null 2>&1 || r=$?
 if [[ "$r" == 2 ]]; then
-    # Failed to connect to SSH agent
-    eval "$(ssh-agent)"
+    echo "Failed to connect to SSH agent, running ssh-agent..."
+    ssh_agent_vars="$(ssh-agent)"
+    echo "$ssh_agent_vars"
+    eval "$ssh_agent_vars"
 fi
 
 ssh-add -l >/dev/null 2>&1 || r=$?
 if [[ "$r" == 1 ]]; then
-    # No keys have been added
+    echo "No keys have been added to ssh-agent, running ssh-add..."
     ssh-add
 fi
 
