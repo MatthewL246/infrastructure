@@ -1,0 +1,29 @@
+// https://wiki.debian.org/PeriodicUpdates
+
+// From /usr/lib/apt/apt.systemd.daily
+APT::Periodic::Enable "1";
+APT::Periodic::Update-Package-Lists "1d";
+APT::Periodic::Unattended-Upgrade "1d";
+
+// Clean up old archives
+APT::Periodic::MaxSize "2048"; // MB
+
+// From /etc/apt/apt.conf.d/50unattended-upgrades and /usr/share/doc/unattended-upgrades/README.md.gz
+Unattended-Upgrade::Origins-Pattern {
+    // Note: these values come from `apt-cache policy`
+    "origin=Debian,archive=stable";
+    "origin=Debian,archive=stable-security";
+
+    // Allow regular updates in addition to security updates
+    "origin=Debian,archive=stable-updates";
+
+    // In case I end up actively using these repos in the future
+    "origin=Debian,archive=stable-proposed-updates";
+    "origin=Debian Backports,archive=stable-backports";
+};
+
+Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+Unattended-Upgrade::Verbose "true";
+
+// TODO: email notifications - Unattended-Upgrade::Mail and/or APT::Periodic::Verbose

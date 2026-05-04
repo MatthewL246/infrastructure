@@ -86,7 +86,8 @@ resource "hcloud_server" "hetz_nbg" {
   location    = local.hetz_nbg_location
   server_type = "cax11"
 
-  image    = "ubuntu-24.04"
+  # I used to use Ubuntu but decided to switch to Debian for a few reasons: it doesn't force you to use Snap, it is more upstream and (in theory) more stable, it is in general less commercial and more open-source
+  image    = "debian-13"
   ssh_keys = [hcloud_ssh_key.dummy.id]
   # For potential future upgrades and downgrades
   keep_disk = true

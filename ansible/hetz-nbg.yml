@@ -29,7 +29,6 @@
           notify:
             - Reload systemd
             - Reload SSH daemon
-            - Restart SSH socket
 
         - name: Apply SSH configuration changes immediately
           ansible.builtin.meta: flush_handlers
@@ -101,10 +100,11 @@
           notify:
             - Reload fail2ban
 
+        # https://wiki.debian.org/PeriodicUpdates
         - name: Configure unattended-upgrades
           ansible.builtin.copy:
-            src: ./config-files/50unattended-upgrades
-            dest: /etc/apt/apt.conf.d/50unattended-upgrades
+            src: ./config-files/unattended-upgrades
+            dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
             owner: root
             group: root
             mode: u=rw,g=r,o=r
@@ -196,6 +196,10 @@
         state: started
         enabled: true
 
+    - name: Configure Headscale
+      # TODO
+      ansible.builtin.meta: noop
+
   handlers:
     # Needed for ssh.socket to automatically pick up changes to the port
     - name: Reload systemd
@@ -206,11 +210,6 @@
       ansible.builtin.service:
         name: ssh
         state: reloaded
-
-    - name: Restart SSH socket
-      ansible.builtin.service:
-        name: ssh.socket
-        state: restarted
 
     - name: Reload fail2ban
       ansible.builtin.service:
