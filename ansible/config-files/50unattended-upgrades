@@ -11,3 +11,5 @@ Unattended-Upgrade::Allowed-Origins {
 };
 
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
+
+Unattended-Upgrade::Verbose "true";
