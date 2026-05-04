@@ -22,4 +22,4 @@ fi
 
 cd "$base_dir/ansible"
 
-ansible-playbook --inventory ./inventory.sh --diff --verbose ./hetz-nbg.yml
+ansible-playbook --inventory ./inventory.sh --diff ./hetz-nbg.yml
