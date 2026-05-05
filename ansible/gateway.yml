@@ -31,8 +31,7 @@
             group: root
             mode: u=rw,g=r,o=r
           notify:
-            - Reload systemd
-            - Reload SSH daemon
+            - Reload SSH
 
         - name: Apply SSH configuration changes immediately
           ansible.builtin.meta: flush_handlers
@@ -113,14 +112,24 @@
             group: root
             mode: u=rw,g=r,o=r
 
-        - name: Enable unattended upgrades
+        - name: Start and enable services
           ansible.builtin.service:
             name: "{{ item }}"
             state: started
             enabled: true
           loop:
+            - ssh.service
+            - ufw.service
+            - fail2ban.service
+            # For unattended-upgrades
             - apt-daily.timer
             - apt-daily-upgrade.timer
+
+        - name: Ensure SSH socket activation is disabled
+          ansible.builtin.service:
+            name: ssh.socket
+            state: stopped
+            enabled: false
 
     - name: Upgrade apt packages
       ansible.builtin.apt:
@@ -205,17 +214,37 @@
       ansible.builtin.meta: noop
 
   handlers:
-    # Needed for ssh.socket to automatically pick up changes to the port (and doesn't hurt otherwise)
-    - name: Reload systemd
-      ansible.builtin.systemd_service:
-        daemon_reload: true
+    - name: Test SSH configuration
+      listen:
+        - Reload SSH
+      ansible.builtin.command:
+        cmd: sshd -T
+      changed_when: false
 
-    - name: Reload SSH daemon
+    - name: Reload SSH service
+      listen:
+        - Reload SSH
       ansible.builtin.service:
         name: ssh
         state: reloaded
 
-    - name: Reload fail2ban
+    - name: Test fail2ban configuration
+      listen:
+        - Reload fail2ban
+      ansible.builtin.command:
+        cmd: fail2ban-client --test
+      changed_when: false
+
+    - name: Reload fail2ban service
+      listen:
+        - Reload fail2ban
       ansible.builtin.service:
         name: fail2ban
+        state: reloaded
+
+    - name: Reload Headscale service
+      listen:
+        - Reload Headscale
+      ansible.builtin.service:
+        name: headscale
         state: reloaded
