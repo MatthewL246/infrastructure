@@ -5,10 +5,10 @@ provider "hcloud" {
 locals {
   # I chose Nuremberg because it supports cost-optimized servers and is physically slightly closer to the US
   # https://docs.hetzner.com/cloud/general/locations/#what-datacenters-are-there
-  hetz_nbg_location = "nbg1"
+  gateway_location = "nbg1"
 }
 
-resource "random_integer" "hetz_nbg_ssh_port" {
+resource "random_integer" "gateway_ssh_port" {
   min = 1025
   max = 65535
 }
@@ -19,23 +19,23 @@ resource "hcloud_ssh_key" "dummy" {
   public_key = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIPTgbKioreT00Lh7VQpNNeqxNVfe3Pr5qm1Y6onUl5OL"
 }
 
-resource "hcloud_primary_ip" "hetz_nbg_ipv4" {
-  name        = "hetz_nbg_ipv4"
-  location    = local.hetz_nbg_location
+resource "hcloud_primary_ip" "gateway_ipv4" {
+  name        = "gateway_ipv4"
+  location    = local.gateway_location
   type        = "ipv4"
   auto_delete = false
   # TODO: once this is in prod, enable delete_protection and lifecycle.prevent_destroy
 }
 
-resource "hcloud_primary_ip" "hetz_nbg_ipv6" {
-  name        = "hetz_nbg_ipv6"
-  location    = local.hetz_nbg_location
+resource "hcloud_primary_ip" "gateway_ipv6" {
+  name        = "gateway_ipv6"
+  location    = local.gateway_location
   type        = "ipv6"
   auto_delete = false
 }
 
-resource "hcloud_firewall" "hetz_nbg" {
-  name = "hetz_nbg_firewall"
+resource "hcloud_firewall" "gateway" {
+  name = "gateway_firewall"
 
   rule {
     description = "Allow all ICMP"
@@ -55,7 +55,7 @@ resource "hcloud_firewall" "hetz_nbg" {
       "0.0.0.0/0",
       "::/0",
     ]
-    port = random_integer.hetz_nbg_ssh_port.result
+    port = random_integer.gateway_ssh_port.result
   }
 
   rule {
@@ -81,9 +81,9 @@ resource "hcloud_firewall" "hetz_nbg" {
   }
 }
 
-resource "hcloud_server" "hetz_nbg" {
-  name        = "hetz-nbg"
-  location    = local.hetz_nbg_location
+resource "hcloud_server" "gateway" {
+  name        = "gateway"
+  location    = local.gateway_location
   server_type = "cax11"
 
   # I used to use Ubuntu but decided to switch to Debian for a few reasons: it doesn't force you to use Snap, it is more upstream and (in theory) more stable, it is in general less commercial and more open-source
@@ -103,7 +103,7 @@ resource "hcloud_server" "hetz_nbg" {
       ssh_import_id = ["gh:MatthewL246"]
       # Keep the account unlocked so SSH access is allowed and sudo works
       lock_passwd = false
-      passwd      = var.hetz_nbg_password_hash
+      passwd      = var.gateway_password_hash
     }]
     # Don't actually authorize the dummy SSH key
     allow_public_ssh_keys = false
@@ -111,7 +111,7 @@ resource "hcloud_server" "hetz_nbg" {
       # Minimal secure SSH daemon configuration, will be replaced with an Ansible-managed one
       path    = "/etc/ssh/sshd_config"
       content = <<-EOT
-        Port ${random_integer.hetz_nbg_ssh_port.result}
+        Port ${random_integer.gateway_ssh_port.result}
         PermitRootLogin no
         PasswordAuthentication no
         KbdInteractiveAuthentication no
@@ -124,11 +124,11 @@ resource "hcloud_server" "hetz_nbg" {
   })}"
 
   public_net {
-    ipv4 = hcloud_primary_ip.hetz_nbg_ipv4.id
-    ipv6 = hcloud_primary_ip.hetz_nbg_ipv6.id
+    ipv4 = hcloud_primary_ip.gateway_ipv4.id
+    ipv6 = hcloud_primary_ip.gateway_ipv6.id
   }
 
-  firewall_ids = [hcloud_firewall.hetz_nbg.id]
+  firewall_ids = [hcloud_firewall.gateway.id]
 
   lifecycle {
     # Recommended by the hcloud provider docs because these cannot be updated in-place but only matter for initial server creation

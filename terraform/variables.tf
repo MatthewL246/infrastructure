@@ -28,8 +28,8 @@ variable "cloudflare_zone_id" {
 # In the end, storing a password hash in the same place as password isn't terrible, I just need to be careful to change the hash when I change the password.
 #
 # Revisit this if the hcloud provider is updated to allow using ephemeral variables in user_data or if there is an easier way to create a non-ephemeral hash from an ephemeral variable.
-variable "hetz_nbg_password_hash" {
-  description = "Password hash to apply to the matthew account on the hetz-nbg server. Generate this with `mkpasswd -m yescrypt`."
+variable "gateway_password_hash" {
+  description = "Password hash to apply to the matthew account on the gateway server. Generate this with `mkpasswd -m yescrypt`."
   type        = string
   sensitive   = true
 }
