@@ -118,8 +118,7 @@ resource "hcloud_server" "gateway" {
       EOT
     }]
     runcmd = [
-      "systemctl daemon-reload",
-      "systemctl restart ssh.service ssh.socket"
+      "systemctl restart ssh.service"
     ]
   })}"
 
