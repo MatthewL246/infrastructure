@@ -1,6 +1,11 @@
 - name: Server setup
   hosts: gateway
   become: true
+  vars:
+    headscale_users:
+      - matthew
+      - restricted
+      # TODO: Look into tagged devices for servers
 
   tasks:
     # For important (i.e. security-related) tasks that should be done early
@@ -273,6 +278,28 @@
             name: tailscaled
             state: started
             enabled: true
+
+    - name: Get Headscale users
+      ansible.builtin.command:
+        cmd: headscale users list --output json
+      changed_when: false
+      register: raw_current_headscale_users
+
+    - name: Parse Headscale users
+      ansible.builtin.set_fact:
+        current_headscale_users: "{{ raw_current_headscale_users.stdout | from_json }}"
+
+    - name: Create Headscale users
+      loop: "{{ headscale_users }}"
+      when: item not in (current_headscale_users | map(attribute='name'))
+      ansible.builtin.command:
+        cmd: headscale users create "{{ item }}"
+
+    - name: Delete extraneous Headscale users
+      loop: "{{ current_headscale_users | map(attribute='name') }}"
+      when: item not in headscale_users
+      ansible.builtin.command:
+        cmd: headscale users delete --name "{{ item }}" --force
 
   handlers:
     - name: Test SSH configuration
