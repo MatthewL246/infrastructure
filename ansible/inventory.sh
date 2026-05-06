@@ -26,7 +26,9 @@ inventory_template='
                 "ansible_user": "matthew",
                 "ansible_become_password": $gateway_password,
                 "ansible_pipelining": true,
-                "password_hash": $gateway_password_hash
+                "password_hash": $gateway_password_hash,
+                "email_domain": $email_domain,
+                "headscale_hostname": $headscale_hostname
             }
         }
     }
@@ -37,4 +39,6 @@ jq --null-input \
     --arg gateway_ssh_port "$(tofu output --raw gateway_ssh_port)" \
     --arg gateway_password "$(pass show gateway_password)" \
     --arg gateway_password_hash "$(pass show gateway_password_hash)" \
+    --arg email_domain "$(tofu output --raw email_domain)" \
+    --arg headscale_hostname "$(tofu output --raw headscale_hostname)" \
     "$inventory_template"

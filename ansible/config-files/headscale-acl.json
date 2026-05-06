@@ -1,0 +1,15 @@
+// See https://headscale.net/stable/ref/acls/
+{
+  "acls": [
+    {
+      "action": "accept",
+      "src": [ "matthew@" ],
+      "dst": [ "*:*" ]
+    },
+    {
+      "action": "accept",
+      "src": [ "restricted@" ],
+      "dst": []
+    }
+  ]
+}

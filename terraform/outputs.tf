@@ -12,3 +12,14 @@ output "gateway_ssh_port" {
   description = "SSH port of the gateway server."
   value       = random_integer.gateway_ssh_port.result
 }
+
+output "email_domain" {
+  # TODO: use an MX record instead
+  description = "Name of a domain that can receive emails."
+  value       = data.cloudflare_zone.primary_domain.name
+}
+
+output "headscale_hostname" {
+  description = "Hostname of the Headscale server."
+  value       = cloudflare_dns_record.headscale_ipv4.name
+}

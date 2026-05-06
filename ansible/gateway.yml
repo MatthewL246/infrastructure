@@ -203,15 +203,31 @@
             path: /tmp/headscale.deb
             state: absent
 
+    - name: Configure Headscale
+      ansible.builtin.template:
+        src: ./config-files/headscale-config.yaml.j2
+        dest: /etc/headscale/config.yaml
+        owner: root
+        group: headscale
+        mode: u=rw,g=r,o=
+      notify:
+        - Reload Headscale
+
+    - name: Configure Headscale ACLs
+      ansible.builtin.copy:
+        src: ./config-files/headscale-acl.json
+        dest: /etc/headscale/acl.json
+        owner: root
+        group: headscale
+        mode: u=rw,g=r,o=
+      notify:
+        - Reload Headscale
+
     - name: Start and enable Headscale service
       ansible.builtin.service:
         name: headscale
         state: started
         enabled: true
-
-    - name: Configure Headscale
-      # TODO
-      ansible.builtin.meta: noop
 
   handlers:
     - name: Test SSH configuration
@@ -242,9 +258,17 @@
         name: fail2ban
         state: reloaded
 
-    - name: Reload Headscale service
+    - name: Test Headscale configuration
+      listen:
+        - Reload Headscale
+      ansible.builtin.command:
+        cmd: headscale configtest
+      changed_when: false
+
+    - name: Restart Headscale service
+      # Note: a full restart is required to handle changes in bind addresses
       listen:
         - Reload Headscale
       ansible.builtin.service:
         name: headscale
-        state: reloaded
+        state: restarted
