@@ -189,8 +189,9 @@
         - name: Download Headscale package
           vars:
             architecture: "{{ (ansible_facts.architecture == 'x86_64') | ternary('amd64', (ansible_facts.architecture == 'aarch64') | ternary('arm64', notdefined)) | mandatory(msg='Unsupported Headscale architecture: ' + ansible_facts.architecture) }}"
-          ansible.builtin.uri:
+          ansible.builtin.get_url:
             url: https://github.com/juanfont/headscale/releases/download/v{{ latest_headscale_version }}/headscale_{{ latest_headscale_version }}_linux_{{ architecture }}.deb
+            force: true
             dest: /tmp/headscale.deb
 
         - name: Install Headscale package
