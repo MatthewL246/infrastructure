@@ -230,6 +230,50 @@
         state: started
         enabled: true
 
+    # Instructions from https://pkgs.tailscale.com/stable/
+    - name: Install Tailscale
+      block:
+        - name: Create keyrings directory
+          ansible.builtin.file:
+            dest: /usr/share/keyrings
+            state: directory
+            owner: root
+            group: root
+            mode: u=rwx,g=rx,o=rx
+
+        - name: Add Tailscale's GPG key
+          ansible.builtin.get_url:
+            url: https://pkgs.tailscale.com/stable/debian/{{ ansible_facts.distribution_release }}.noarmor.gpg
+            force: true
+            dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+            owner: root
+            group: root
+            mode: u=rw,g=r,o=r
+
+        - name: Add Tailscale repository
+          ansible.builtin.get_url:
+            url: https://pkgs.tailscale.com/stable/debian/{{ ansible_facts.distribution_release }}.tailscale-keyring.list
+            force: true
+            dest: /etc/apt/sources.list.d/tailscale.list
+            owner: root
+            group: root
+            mode: u=rw,g=r,o=r
+
+        - name: Install Tailscale package
+          ansible.builtin.apt:
+            update_cache: true
+            name:
+              - tailscale
+              # Isn't strictly necessary, but it seems cleaner to have the key owned by a package
+              - tailscale-archive-keyring
+            state: present
+
+        - name: Start and enable tailscaled
+          ansible.builtin.service:
+            name: tailscaled
+            state: started
+            enabled: true
+
   handlers:
     - name: Test SSH configuration
       listen:
