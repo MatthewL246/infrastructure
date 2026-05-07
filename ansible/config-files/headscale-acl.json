@@ -1,15 +1,19 @@
 // See https://headscale.net/stable/ref/acls/
 {
+  "tagOwners": {
+    "tag:servers": ["matthew@"]
+  },
   "acls": [
     {
       "action": "accept",
-      "src": [ "matthew@" ],
-      "dst": [ "*:*" ]
+      "src": ["matthew@"],
+      "dst": ["*:*"]
     },
+    // Allows all users to access their own devices
     {
       "action": "accept",
-      "src": [ "restricted@" ],
-      "dst": []
+      "src": ["autogroup:member"],
+      "dst": ["autogroup:self:*"]
     }
   ]
 }

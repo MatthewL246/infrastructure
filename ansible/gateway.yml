@@ -4,8 +4,6 @@
   vars:
     headscale_users:
       - matthew
-      - restricted
-      # TODO: Look into tagged devices for servers
 
   tasks:
     # For important (i.e. security-related) tasks that should be done early
@@ -300,6 +298,38 @@
       when: item not in headscale_users
       ansible.builtin.command:
         cmd: headscale users delete --name "{{ item }}" --force
+
+    - name: Get Tailscale status
+      ansible.builtin.command:
+        cmd: tailscale status --json
+      changed_when: false
+      register: raw_tailscale_status
+
+    - name: Parse Tailscale status
+      ansible.builtin.set_fact:
+        tailscale_status: "{{ raw_tailscale_status.stdout | from_json }}"
+
+    # TODO: assert consistency between status and headscale nodes list
+
+    - name: Log Tailscale client in to Headscale server
+      # https://docs.rs/tailscale-localapi/latest/tailscale_localapi/types/enum.BackendState.html
+      # It's not clear what NoState represents, but it seems reasonable to login if that is reached
+      when: tailscale_status.BackendState == "NoState" or tailscale_status.BackendState == "NeedsLogin"
+      block:
+        - name: Create pre-authenticated key
+          ansible.builtin.command:
+            cmd: headscale preauthkeys create --tags tag:server --expiration 2m
+          register: headscale_preauthkey
+
+        - name: Log in with pre-authenticated key
+          ansible.builtin.command:
+            cmd: tailscale up --login-server "https://{{ headscale_hostname }}" --authkey "{{ headscale_preauthkey.stdout }}"
+
+    - name: Ensure Tailscale is running
+      when: tailscale_status.BackendState == "Stopped"
+      ansible.builtin.command:
+        # tailscale up requires all flags to be set at once
+        cmd: tailscale up --login-server "https://{{ headscale_hostname }}"
 
   handlers:
     - name: Test SSH configuration
