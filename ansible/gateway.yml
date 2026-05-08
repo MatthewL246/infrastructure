@@ -292,7 +292,7 @@
 
     - name: Create Headscale users
       loop: "{{ headscale_users }}"
-      when: item not in (current_headscale_users | map(attribute='name'))
+      when: item not in (current_headscale_users | map(attribute="name"))
       ansible.builtin.command:
         cmd: headscale users create "{{ item }}"
 
@@ -307,17 +307,15 @@
         cmd: tailscale status --json
       changed_when: false
       register: raw_tailscale_status
+      # https://docs.rs/tailscale-localapi/latest/tailscale_localapi/types/enum.BackendState.html
+      until: (raw_tailscale_status.stdout | from_json).BackendState in ["NeedsLogin", "Stopped", "Running"]
 
     - name: Parse Tailscale status
       ansible.builtin.set_fact:
         tailscale_status: "{{ raw_tailscale_status.stdout | from_json }}"
 
-    # TODO: assert consistency between status and headscale nodes list
-
     - name: Log Tailscale client in to Headscale server
-      # https://docs.rs/tailscale-localapi/latest/tailscale_localapi/types/enum.BackendState.html
-      # It's not clear what NoState represents, but it seems reasonable to login if that is reached
-      when: tailscale_status.BackendState == "NoState" or tailscale_status.BackendState == "NeedsLogin"
+      when: tailscale_status.BackendState == "NeedsLogin"
       block:
         - name: Create pre-authenticated key
           ansible.builtin.command:
@@ -333,6 +331,35 @@
       ansible.builtin.command:
         # tailscale up requires all flags to be set at once
         cmd: tailscale up --login-server "https://{{ headscale_hostname }}"
+
+    - name: Verify that Tailscale is logged in correctly
+      when: tailscale_status.BackendState == "Running"
+      block:
+        - name: Verify that Tailscale status looks correct
+          ansible.builtin.assert:
+            that:
+              - tailscale_status.CurrentTailnet.Name == headscale_hostname
+              - tailscale_status.User[tailscale_status.Self.UserID | string].LoginName == "tagged-devices"
+            fail_msg: |
+              Tailscale does not appear to be logged in correctly. Ensure that the login server is "{{ headscale_hostname }}" and that the user is "tagged-devices".
+
+              {{ tailscale_status }}
+
+        - name: Get Headscale nodes
+          ansible.builtin.command:
+            cmd: headscale nodes list --output json
+          changed_when: false
+          register: raw_current_headscale_nodes
+
+        - name: Parse Headscale nodes
+          ansible.builtin.set_fact:
+            current_headscale_nodes: "{{ raw_current_headscale_nodes.stdout | from_json }}"
+
+        - name: Verify that this node appears in the Headscale nodes list
+          ansible.builtin.assert:
+            that: current_headscale_nodes | selectattr("node_key", "==", tailscale_status.Self.PublicKey) | length == 1
+
+  # Not going to declaratively manage all devices with Ansible because it would be very difficult to make that work with personal devices
 
   handlers:
     - name: Test SSH configuration
