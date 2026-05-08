@@ -328,7 +328,7 @@
           ansible.builtin.command:
             cmd: tailscale up --login-server "https://{{ headscale_hostname }}" --authkey "{{ headscale_preauthkey.stdout }}"
 
-    - name: Ensure Tailscale is running
+    - name: Start Tailscale
       when: tailscale_status.BackendState == "Stopped"
       ansible.builtin.command:
         # tailscale up requires all flags to be set at once
