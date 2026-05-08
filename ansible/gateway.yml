@@ -227,6 +227,9 @@
       notify:
         - Reload Headscale
 
+    - name: Apply Headscale configuration changes so Tailscale will be able to connect
+      ansible.builtin.meta: flush_handlers
+
     - name: Start and enable Headscale service
       ansible.builtin.service:
         name: headscale
