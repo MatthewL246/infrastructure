@@ -1,0 +1,119 @@
+- name: Get package facts
+  ansible.builtin.package_facts:
+  no_log: true # Just to avoid long verbose output
+
+- name: Get latest Headscale release
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/juanfont/headscale/releases/latest"
+  register: headscale_version
+
+- name: Set Headscale-related facts
+  ansible.builtin.set_fact:
+    installed_headscale_version: "{{ ansible_facts.packages.headscale[0].version | default(None) }}"
+    latest_headscale_version: "{{ headscale_version.json.tag_name[1:] }}"
+
+- name: Install or update Headscale
+  when: installed_headscale_version != latest_headscale_version
+  block:
+    - name: Warn before installing an update
+      when: installed_headscale_version is not none
+      ansible.builtin.pause:
+        prompt: |
+          Headscale will be updated from v{{ installed_headscale_version }} to v{{ latest_headscale_version }}!
+
+          Remember to read the release notes at https://github.com/juanfont/headscale/releases/tag/v{{ latest_headscale_version }} and check for breaking changes.
+
+          Press enter to continue.
+
+    - name: Stop Headscale
+      when: installed_headscale_version is not none
+      ansible.builtin.service:
+        name: headscale
+        state: stopped
+
+    - name: Check if Headscale database files exist
+      ansible.builtin.stat:
+        path: /var/lib/headscale/{{ item }}
+        get_checksum: false
+      loop:
+        - db.sqlite
+        - db.sqlite-wal
+        - db.sqlite-shm
+      register: headscale_database
+
+    - name: Back up Headscale database files
+      ansible.builtin.fetch:
+        src: "{{ item.stat.path }}"
+        dest: ./backups/headscale-update-to-v{{ latest_headscale_version }}/
+      loop: "{{ headscale_database.results }}"
+      when: item.stat.exists
+
+    - name: Download Headscale package
+      vars:
+        architecture: "{{ (ansible_facts.architecture == 'x86_64') | ternary('amd64', (ansible_facts.architecture == 'aarch64') | ternary('arm64', notdefined)) | mandatory(msg='Unsupported Headscale architecture: ' + ansible_facts.architecture) }}"
+      ansible.builtin.get_url:
+        url: https://github.com/juanfont/headscale/releases/download/v{{ latest_headscale_version }}/headscale_{{ latest_headscale_version }}_linux_{{ architecture }}.deb
+        force: true
+        dest: /tmp/headscale.deb
+
+    - name: Install Headscale package
+      ansible.builtin.apt:
+        deb: /tmp/headscale.deb
+        state: present
+
+    - name: Delete Headscale package
+      ansible.builtin.file:
+        path: /tmp/headscale.deb
+        state: absent
+
+- name: Configure Headscale
+  ansible.builtin.template:
+    src: headscale-config.yaml.j2
+    dest: /etc/headscale/config.yaml
+    owner: root
+    group: headscale
+    mode: u=rw,g=r,o=
+  notify:
+    - Reload Headscale
+
+- name: Configure Headscale ACLs
+  ansible.builtin.copy:
+    src: headscale-acl.json
+    dest: /etc/headscale/acl.json
+    owner: root
+    group: headscale
+    mode: u=rw,g=r,o=
+  notify:
+    - Reload Headscale
+
+- name: Apply Headscale configuration changes so Tailscale will be able to connect
+  ansible.builtin.meta: flush_handlers
+
+- name: Start and enable Headscale service
+  ansible.builtin.service:
+    name: headscale
+    state: started
+    enabled: true
+
+- name: Get Headscale users
+  ansible.builtin.command:
+    cmd: headscale users list --output json
+  changed_when: false
+  register: raw_current_headscale_users
+
+- name: Parse Headscale users
+  ansible.builtin.set_fact:
+    current_headscale_users: "{{ raw_current_headscale_users.stdout | from_json }}"
+
+- name: Create Headscale users
+  loop: "{{ headscale_users }}"
+  when: item not in (current_headscale_users | map(attribute="name"))
+  ansible.builtin.command:
+    cmd: headscale users create "{{ item }}"
+
+- name: Delete extraneous Headscale users
+  loop: "{{ current_headscale_users | map(attribute='name') }}"
+  when: item not in headscale_users
+  ansible.builtin.command:
+    cmd: headscale users delete --name "{{ item }}" --force
+

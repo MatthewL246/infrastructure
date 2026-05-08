@@ -1,0 +1,104 @@
+# Instructions from https://pkgs.tailscale.com/stable/
+- name: Install Tailscale on Debian
+  # Currently only implemented for Debian but of course could be implemented for other distros if needed
+  when: ansible_facts.distribution == "Debian"
+  block:
+    - name: Create keyrings directory
+      ansible.builtin.file:
+        dest: /usr/share/keyrings
+        state: directory
+        owner: root
+        group: root
+        mode: u=rwx,g=rx,o=rx
+
+    - name: Add Tailscale's GPG key
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/debian/{{ ansible_facts.distribution_release }}.noarmor.gpg
+        force: true
+        dest: /usr/share/keyrings/tailscale-archive-keyring.gpg
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+
+    - name: Add Tailscale repository
+      ansible.builtin.get_url:
+        url: https://pkgs.tailscale.com/stable/debian/{{ ansible_facts.distribution_release }}.tailscale-keyring.list
+        force: true
+        dest: /etc/apt/sources.list.d/tailscale.list
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+
+    - name: Install Tailscale package
+      ansible.builtin.apt:
+        update_cache: true
+        name:
+          - tailscale
+          # Isn't strictly necessary, but it seems cleaner to have the key owned by a package
+          - tailscale-archive-keyring
+        state: present
+
+- name: Start and enable tailscaled
+  ansible.builtin.service:
+    name: tailscaled
+    state: started
+    enabled: true
+
+- name: Get Tailscale status
+  ansible.builtin.command:
+    cmd: tailscale status --json
+  changed_when: false
+  register: raw_tailscale_status
+  # https://docs.rs/tailscale-localapi/latest/tailscale_localapi/types/enum.BackendState.html
+  until: (raw_tailscale_status.stdout | from_json).BackendState in ["NeedsLogin", "Stopped", "Running"]
+
+- name: Parse Tailscale status
+  ansible.builtin.set_fact:
+    tailscale_status: "{{ raw_tailscale_status.stdout | from_json }}"
+
+- name: Log Tailscale client in to Headscale server
+  when: tailscale_status.BackendState == "NeedsLogin"
+  block:
+    - name: Create pre-authenticated key
+      delegate_to: gateway
+      ansible.builtin.command:
+        cmd: headscale preauthkeys create --tags tag:server --expiration 2m
+      register: headscale_preauthkey
+
+    - name: Log in with pre-authenticated key
+      ansible.builtin.command:
+        cmd: tailscale up --login-server "https://{{ headscale_hostname }}" --authkey "{{ headscale_preauthkey.stdout }}"
+
+- name: Start Tailscale
+  when: tailscale_status.BackendState == "Stopped"
+  ansible.builtin.command:
+    # tailscale up requires all flags to be set at once
+    cmd: tailscale up --login-server "https://{{ headscale_hostname }}"
+
+- name: Verify that Tailscale is logged in correctly
+  when: tailscale_status.BackendState == "Running"
+  block:
+    - name: Verify that Tailscale status looks correct
+      ansible.builtin.assert:
+        that:
+          - tailscale_status.CurrentTailnet.Name == headscale_hostname
+          - tailscale_status.User[tailscale_status.Self.UserID | string].LoginName == "tagged-devices"
+        fail_msg: |
+          Tailscale does not appear to be logged in correctly. Ensure that the login server is "{{ headscale_hostname }}" and that the user is "tagged-devices".
+
+          {{ tailscale_status }}
+
+    - name: Get Headscale nodes
+      delegate_to: gateway
+      ansible.builtin.command:
+        cmd: headscale nodes list --output json
+      changed_when: false
+      register: raw_current_headscale_nodes
+
+    - name: Parse Headscale nodes
+      ansible.builtin.set_fact:
+        current_headscale_nodes: "{{ raw_current_headscale_nodes.stdout | from_json }}"
+
+    - name: Verify that this node appears in the Headscale nodes list
+      ansible.builtin.assert:
+        that: current_headscale_nodes | selectattr("node_key", "==", tailscale_status.Self.PublicKey) | length == 1

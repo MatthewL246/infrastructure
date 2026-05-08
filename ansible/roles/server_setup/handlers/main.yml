@@ -1,0 +1,27 @@
+- name: Test SSH configuration
+  listen:
+    - Reload SSH
+  ansible.builtin.command:
+    cmd: sshd -T
+  changed_when: false
+
+- name: Reload SSH service
+  listen:
+    - Reload SSH
+  ansible.builtin.service:
+    name: ssh
+    state: reloaded
+
+- name: Test fail2ban configuration
+  listen:
+    - Reload fail2ban
+  ansible.builtin.command:
+    cmd: fail2ban-client --test
+  changed_when: false
+
+- name: Reload fail2ban service
+  listen:
+    - Reload fail2ban
+  ansible.builtin.service:
+    name: fail2ban
+    state: reloaded

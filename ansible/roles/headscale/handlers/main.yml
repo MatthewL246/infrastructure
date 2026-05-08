@@ -1,0 +1,14 @@
+- name: Test Headscale configuration
+  listen:
+    - Reload Headscale
+  ansible.builtin.command:
+    cmd: headscale configtest
+  changed_when: false
+
+- name: Restart Headscale service
+  # Note: a full restart is required to handle changes in bind addresses
+  listen:
+    - Reload Headscale
+  ansible.builtin.service:
+    name: headscale
+    state: restarted

@@ -1,0 +1,125 @@
+# For important (i.e. security-related) tasks that should be done early
+- name: Set hostname
+  ansible.builtin.hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Configure matthew user
+  ansible.builtin.user:
+    name: matthew
+    comment: Matthew
+    group: matthew
+    groups:
+      - matthew
+      - sudo
+    home: /home/matthew
+    password: "{{ password_hash }}"
+    password_lock: false
+    shell: /bin/bash
+
+- name: Configure SSH
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  notify:
+    - Reload SSH
+
+- name: Apply SSH configuration changes immediately
+  ansible.builtin.meta: flush_handlers
+
+- name: Update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+
+- name: Install required packages
+  ansible.builtin.apt:
+    name:
+      - ufw
+      - fail2ban
+      - unattended-upgrades
+    state: present
+
+- name: Create UFW allow rules
+  community.general.ufw:
+    rule: allow
+    direction: in
+    proto: "{{ item.proto }}"
+    to_port: "{{ item.port }}"
+    comment: Allow {{ item.name }}
+  loop:
+    - {name: SSH, proto: tcp, port: "{{ ansible_port }}"}
+    - {name: HTTP, proto: tcp, port: 80}
+    - {name: HTTPS, proto: tcp, port: 443}
+  register: ufw_create
+
+- name: Delete old UFW rules
+  community.general.ufw:
+    delete: true
+    rule: allow
+    direction: in
+    proto: "{{ item.proto }}"
+    to_port: "{{ item.port }}"
+  loop:
+    - {name: WireGuard, proto: udp, port: 51820}
+  vars: {} # Deliberately empty block due to formatter bug: https://github.com/google/yamlfmt/issues/110
+
+- name: Enable UFW with default-deny policy
+  community.general.ufw:
+    default: deny
+    state: enabled
+  register: ufw_status
+
+  # Important because removing a rule from the list of allow rules does not ensure that it is deleted
+- name: Fail if there are an unexpected number of UFW rules
+  vars:
+    rule_count: "{{ ufw_status.msg | split('\n') | select('search', ' (ALLOW|DENY|REJECT|LIMIT) ') | length }}"
+    expected_rule_count: "{{ (ufw_create.results | length) * 2 }}"
+  ansible.builtin.assert:
+    that: rule_count == expected_rule_count
+    fail_msg: |
+      Unexpected number of UFW rules: expected {{ expected_rule_count }}, got {{ rule_count }}
+
+      {{ ufw_status.msg }}
+
+- name: Configure fail2ban
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: /etc/fail2ban/{{ item }}
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+  loop:
+    - fail2ban.local
+    - jail.local
+  notify:
+    - Reload fail2ban
+
+# https://wiki.debian.org/PeriodicUpdates
+- name: Configure unattended-upgrades
+  ansible.builtin.copy:
+    src: unattended-upgrades
+    dest: /etc/apt/apt.conf.d/52unattended-upgrades-local
+    owner: root
+    group: root
+    mode: u=rw,g=r,o=r
+
+- name: Start and enable services
+  ansible.builtin.service:
+    name: "{{ item }}"
+    state: started
+    enabled: true
+  loop:
+    - ssh.service
+    - ufw.service
+    - fail2ban.service
+    # For unattended-upgrades
+    - apt-daily.timer
+    - apt-daily-upgrade.timer
+
+- name: Ensure SSH socket activation is disabled
+  ansible.builtin.service:
+    name: ssh.socket
+    state: stopped
+    enabled: false
