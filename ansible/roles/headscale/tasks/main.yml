@@ -1,3 +1,4 @@
+# Not going to declaratively manage all devices with Ansible because it would be very difficult to make that work with personal devices
 - name: Get package facts
   ansible.builtin.package_facts:
   no_log: true # Just to avoid long verbose output

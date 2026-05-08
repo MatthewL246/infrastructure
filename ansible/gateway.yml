@@ -20,5 +20,3 @@
     - name: Set up and connect Tailscale to Headscale
       ansible.builtin.import_role:
         name: tailscale
-
-  # Not going to declaratively manage all devices with Ansible because it would be very difficult to make that work with personal devices
