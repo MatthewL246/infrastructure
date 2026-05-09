@@ -20,3 +20,7 @@
     - name: Set up and connect Tailscale to Headscale
       ansible.builtin.import_role:
         name: tailscale
+
+    - name: Create backup WireGuard tunnel
+      ansible.builtin.import_role:
+        name: wireguard

@@ -1,0 +1,16 @@
+# A bit of a hack to validate the configuration: wg does not have a configuration check command, but attempting to set the configuration of a nonexistent interface will cause it to parse the configuration before configuring the interface. This will fail in different ways depending on whether the configuration is valid.
+- name: Validate wg0 configuration
+  ansible.builtin.shell:
+    cmd: wg-quick strip wg0 | wg setconf nonexistent /dev/stdin
+  register: wg0_config_check
+  changed_when: false
+  failed_when: "not wg0_config_check.stderr == 'Unable to modify interface: No such device'"
+  listen:
+    - Reload wg0
+
+- name: Reload wg-quick for interface wg0
+  ansible.builtin.service:
+    name: wg-quick@wg0
+    state: reloaded
+  listen:
+    - Reload wg0

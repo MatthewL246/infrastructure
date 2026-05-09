@@ -1,0 +1,12 @@
+[Interface]
+PrivateKey = {{ wg0_private_key }}
+Address = 10.1.0.{{ ip_address_number }}/24, fd00:1::{{ ip_address_number }}/64
+ListenPort = 51820
+
+{#
+[Peer]
+PublicKey = {{ peer_public_key }}
+PresharedKey = {{ preshared_key }}
+AllowedIPs = 10.1.0.{{ peer_ip_address_number }}/32, fd00:1::{{ peer_ip_address_number }}/128
+Endpoint = {{ some_name }}:51820
+#}
