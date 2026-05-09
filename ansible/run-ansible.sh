@@ -22,4 +22,4 @@ fi
 
 cd "$base_dir/ansible"
 
-ansible-playbook --inventory ./inventory.sh --diff ./gateway.yml
+ansible-playbook --inventory ./inventory.sh --diff "$@"

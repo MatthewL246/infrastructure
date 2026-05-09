@@ -1,5 +1,5 @@
 provider "hcloud" {
-  token = var.hetzner_cloud_token
+  token = local.hetzner_token
 }
 
 locals {
@@ -103,7 +103,7 @@ resource "hcloud_server" "gateway" {
       ssh_import_id = ["gh:MatthewL246"]
       # Keep the account unlocked so SSH access is allowed and sudo works
       lock_passwd = false
-      passwd      = var.gateway_password_hash
+      passwd      = local.gateway_password_hash
     }]
     # Don't actually authorize the dummy SSH key
     allow_public_ssh_keys = false

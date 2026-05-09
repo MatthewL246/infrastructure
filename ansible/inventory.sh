@@ -9,6 +9,29 @@ if [[ "$*" != "--list" ]]; then
 fi
 
 base_dir="$(dirname "$(realpath "$0")")/.."
+
+cd "$base_dir/ansible"
+
+environment_variables_help_text="
+Required environment variables:
+
+gateway_password_name: Name of the password of the gateway server stored in pass.
+gateway_password_hash_name: Name of the password hash of the gateway server stored in pass."
+
+if [[ ! -f .env ]]; then
+    echo "Error: file ansible/.env does not exist." >&2
+    echo "$environment_variables_help_text" >&2
+    exit 1
+fi
+
+source ./.env
+
+if [[ -z "${gateway_password_name-}" || -z "${gateway_password_hash_name-}" ]]; then
+    echo "Error: not all required environment variables are defined in ansible/.env." >&2
+    echo "$environment_variables_help_text" >&2
+    exit 1
+fi
+
 cd "$base_dir/terraform"
 
 inventory_template='
@@ -36,9 +59,9 @@ inventory_template='
 
 jq --null-input \
     --arg gateway_ip "$(tofu output -raw gateway_ipv4)" \
-    --arg gateway_ssh_port "$(tofu output --raw gateway_ssh_port)" \
-    --arg gateway_password "$(pass show gateway_password)" \
-    --arg gateway_password_hash "$(pass show gateway_password_hash)" \
-    --arg email_domain "$(tofu output --raw email_domain)" \
-    --arg headscale_hostname "$(tofu output --raw headscale_hostname)" \
+    --arg gateway_ssh_port "$(tofu output -raw gateway_ssh_port)" \
+    --arg gateway_password "$(pass show "$gateway_password_name")" \
+    --arg gateway_password_hash "$(pass show "$gateway_password_hash_name")" \
+    --arg email_domain "$(tofu output -raw email_domain)" \
+    --arg headscale_hostname "$(tofu output -raw headscale_hostname)" \
     "$inventory_template"

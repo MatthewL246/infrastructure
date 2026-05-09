@@ -1,5 +1,5 @@
 provider "cloudflare" {
-  api_token = var.cloudflare_api_token
+  api_token = local.cloudflare_token
 }
 
 data "cloudflare_zone" "primary_domain" {

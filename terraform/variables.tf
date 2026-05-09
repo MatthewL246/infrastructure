@@ -1,15 +1,12 @@
-# TODO: switch tokens to environment variables so these don't stay in the state
-variable "hetzner_cloud_token" {
-  description = "Token for the Hetzner Cloud project (read/write)."
+variable "hetzner_token_name" {
+  description = "Name of the Hetzner Cloud API token stored in pass. Required permissions: read/write."
   type        = string
-  sensitive   = true
   ephemeral   = true
 }
 
-variable "cloudflare_api_token" {
-  description = "Cloudflare account API token (required single-zone permissions: DNS:Edit)."
+variable "cloudflare_token_name" {
+  description = "Name of the Cloudflare account API token stored in pass. Required permissions: single-zone DNS edit."
   type        = string
-  sensitive   = true
   ephemeral   = true
 }
 
@@ -28,8 +25,7 @@ variable "cloudflare_zone_id" {
 # In the end, storing a password hash in the same place as password isn't terrible, I just need to be careful to change the hash when I change the password.
 #
 # Revisit this if the hcloud provider is updated to allow using ephemeral variables in user_data or if there is an easier way to create a non-ephemeral hash from an ephemeral variable.
-variable "gateway_password_hash" {
-  description = "Password hash to apply to the matthew account on the gateway server. Generate this with `mkpasswd -m yescrypt`."
+variable "gateway_password_hash_name" {
+  description = "Name of the password hash stored in pass to apply to the matthew account on the gateway server. Generate this with `mkpasswd -m yescrypt`."
   type        = string
-  sensitive   = true
 }

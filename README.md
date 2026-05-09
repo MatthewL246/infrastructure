@@ -10,8 +10,9 @@ Contributions will be considered on a case-by-case basis: if you want to fix a b
 
 ## Usage
 
-1. Fill in the required Terraform variables (see [`variables.tf`](./terraform/variables.tf)) in `terraform.tfvars`.
-2. Use standard Terraform/OpenTofu commands to deploy the infrastructure.
-3. Configure the servers using Ansible with the `run-ansible.sh` script.
+1. Fill in the required Terraform variables (see [`variables.tf`](./terraform/variables.tf)) in `terraform/terraform.tfvars`.
+2. Fill in the required Ansible variables (see [`inventory.sh`](./ansible/inventory.sh)) in `ansible/.env`.
+3. Use standard Terraform/OpenTofu commands to deploy the infrastructure.
+4. Configure the servers using Ansible with the script `ansible/run-ansible.sh playbook.yml`.
 
 Note: to run standard Ansible commands, make sure to use the inventory-generation script with `--inventory inventory.sh`.
