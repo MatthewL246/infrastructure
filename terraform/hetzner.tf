@@ -20,22 +20,34 @@ resource "hcloud_ssh_key" "dummy" {
 }
 
 resource "hcloud_primary_ip" "gateway_ipv4" {
-  name        = "gateway_ipv4"
+  name        = "gateway-ipv4"
   location    = local.gateway_location
   type        = "ipv4"
   auto_delete = false
-  # TODO: once this is in prod, enable delete_protection and lifecycle.prevent_destroy
+
+  # Avoid deleting IP addresses because IP reputation is a thing
+  delete_protection = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "hcloud_primary_ip" "gateway_ipv6" {
-  name        = "gateway_ipv6"
+  name        = "gateway-ipv6"
   location    = local.gateway_location
   type        = "ipv6"
   auto_delete = false
+
+  delete_protection = true
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "hcloud_firewall" "gateway" {
-  name = "gateway_firewall"
+  name = "gateway-firewall"
 
   rule {
     description = "Allow all ICMP"

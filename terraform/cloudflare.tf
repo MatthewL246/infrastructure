@@ -8,36 +8,36 @@ data "cloudflare_zone" "primary_domain" {
 
 resource "cloudflare_dns_record" "gateway_ipv4" {
   zone_id = var.cloudflare_zone_id
-  name    = "gateway-staging.${data.cloudflare_zone.primary_domain.name}"
+  name    = "gateway.${data.cloudflare_zone.primary_domain.name}"
   type    = "A"
   content = hcloud_server.gateway.ipv4_address
-  ttl     = 1
+  ttl     = 60 * 60
   proxied = false
 }
 
 resource "cloudflare_dns_record" "gateway_ipv6" {
   zone_id = var.cloudflare_zone_id
-  name    = "gateway-staging.${data.cloudflare_zone.primary_domain.name}"
+  name    = "gateway.${data.cloudflare_zone.primary_domain.name}"
   type    = "AAAA"
   content = hcloud_server.gateway.ipv6_address
-  ttl     = 1
+  ttl     = 60 * 60
   proxied = false
 }
 
 resource "cloudflare_dns_record" "headscale_ipv4" {
   zone_id = var.cloudflare_zone_id
-  name    = "headscale-staging.${data.cloudflare_zone.primary_domain.name}"
+  name    = "headscale.${data.cloudflare_zone.primary_domain.name}"
   type    = "A"
   content = hcloud_server.gateway.ipv4_address
-  ttl     = 1
+  ttl     = 60 * 60
   proxied = false
 }
 
 resource "cloudflare_dns_record" "headscale_ipv6" {
   zone_id = var.cloudflare_zone_id
-  name    = "headscale-staging.${data.cloudflare_zone.primary_domain.name}"
+  name    = "headscale.${data.cloudflare_zone.primary_domain.name}"
   type    = "AAAA"
   content = hcloud_server.gateway.ipv6_address
-  ttl     = 1
+  ttl     = 60 * 60
   proxied = false
 }
