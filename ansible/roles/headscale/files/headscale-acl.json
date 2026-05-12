@@ -1,7 +1,7 @@
 // See https://headscale.net/stable/ref/acls/
 {
   "tagOwners": {
-    "tag:servers": ["matthew@"]
+    "tag:server": ["matthew@"]
   },
   "acls": [
     {
