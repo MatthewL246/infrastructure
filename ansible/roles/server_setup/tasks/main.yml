@@ -16,6 +16,14 @@
     password_lock: false
     shell: /bin/bash
 
+- name: Configure SSH authorized keys
+  ansible.builtin.copy:
+    src: authorized_keys
+    dest: /home/matthew/.ssh/authorized_keys
+    owner: matthew
+    group: matthew
+    mode: u=rw,g=,o=
+
 - name: Configure SSH
   ansible.builtin.template:
     src: sshd_config.j2
